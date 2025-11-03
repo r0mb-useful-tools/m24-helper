@@ -1,15 +1,15 @@
 // ==UserScript==
 // @name         Kinopoisk Data Collector
 // @namespace    http://tampermonkey.net/
-// @version      2.0
+// @version      2.1
 // @description  Собирает данные о кино с kinopoisk и копирует в буфер обмена по F10
 // @author       Roman Balaev
 // @match        https://kinopoisk.ru/*
 // @match        https://www.kinopoisk.ru/*
 // @grant        GM_setClipboard
 // @grant        GM_notification
-// @updateURL    https://github.com/r0mb-useful-tools/m24-helper/raw/main/m24_kinopoisk.user.js
-// @downloadURL  https://github.com/r0mb-useful-tools/m24-helper/raw/main/m24_kinopoisk.user.js
+// @updateURL    https://github.com/r0mb-useful-tools/m24-helper/raw/refs/heads/main/m24_kinopoisk.user.js
+// @downloadURL  https://github.com/r0mb-useful-tools/m24-helper/raw/refs/heads/main/m24_kinopoisk.user.js
 // ==/UserScript==
 
 (function() {
