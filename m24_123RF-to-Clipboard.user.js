@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         123RF to Google Sheets
 // @namespace    http://tampermonkey.net/
-// @version      3.0
+// @version      3.1
 // @description  Копирует инфо с 123RF для Google-таблиц по нажатию F10
 // @author       Roman Balaev
 // @match        *://*.123rf.com/*
@@ -59,11 +59,6 @@ if (typeof GM_setValue === 'undefined') {
         }
     }
 
-    // Проверяем, заполнен ли email
-    if (!config.email) {
-        alert('Пожалуйста, настройте скрипт перед использованием!\n\nВ меню Tampermonkey выберите "\u2699 Ввод email для скрипта" и введите ваш email.');
-    }
-
     function showTempNotification(message) {
         const notification = document.createElement('div');
         notification.textContent = message;
@@ -100,7 +95,7 @@ if (typeof GM_setValue === 'undefined') {
     function processPageData() {
         // Проверяем, установлен ли email
         if (!config.email) {
-            alert('Email не настроен! Пожалуйста, введите ваш email в настройках скрипта.\n\nДля этого в меню Tampermonkey выберите "⚙️ Настройки скрипта"');
+            alert('Email не настроен! Пожалуйста, введите ваш email в настройках скрипта.\n\nДля этого в меню Tampermonkey выберите "\u2699 Ввод email для скрипта"');
             showConfigDialog();
             return;
         }
