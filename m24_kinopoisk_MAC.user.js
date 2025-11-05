@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Kinopoisk Data Collector
 // @namespace    http://tampermonkey.net/
-// @version      2.1MAC
-// @description  Собирает данные о кино с kinopoisk и копирует по Cmd+F10
+// @version      2.2MAC
+// @description  Собирает данные о кино с kinopoisk и копирует по Control+Command+F10
 // @author       Roman Balaev
 // @match        https://kinopoisk.ru/*
 // @match        https://www.kinopoisk.ru/*
@@ -25,6 +25,9 @@
 
     // Основная функция скрипта
     async function collectKinopoiskData() {
+        // ПОКАЗЫВАЕМ УВЕДОМЛЕНИЕ О ЗАПУСКЕ СКРИПТА
+        showNotification('Скрипт запущен', 'loading', 500);
+        
         try {
             const currentUrl = window.location.href;
             
@@ -221,7 +224,7 @@
     }
 
     // Показ уведомления
-    function showNotification(message, type = 'info') {
+    function showNotification(message, type = 'info', customTimeout = null) {
         // Создаем стили для уведомления
         const style = document.createElement('style');
         style.textContent = `
@@ -250,6 +253,10 @@
                 background-color: #c62828;
                 border: 2px solid #b71c1c;
             }
+            .kinopoisk-notification.loading {
+                background-color: #8B0000;
+                border: 2px solid #660000;
+            }
         `;
         document.head.appendChild(style);
 
@@ -261,16 +268,17 @@
         document.body.appendChild(notification);
 
         // Удаляем уведомление через указанное время
+        const timeout = customTimeout || CONFIG.NOTIFICATION_TIMEOUT;
         setTimeout(() => {
             if (notification.parentNode) {
                 notification.parentNode.removeChild(notification);
             }
-        }, CONFIG.NOTIFICATION_TIMEOUT);
+        }, timeout);
     }
 
-    // Обработчик нажатия клавиши Cmd+F10
+    // Обработчик нажатия клавиши Control+Command+F10
     function handleKeyPress(event) {
-        if (event.key === 'F10' && (event.metaKey || event.cmdKey)) {
+        if (event.key === 'F10' && event.ctrlKey && event.metaKey) {
             event.preventDefault();
             collectKinopoiskData();
         }
