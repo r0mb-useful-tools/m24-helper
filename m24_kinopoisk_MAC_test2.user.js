@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Test2
 // @namespace    http://tampermonkey.net/
-// @version      1.4
+// @version      1.6
 // @description  Собирает данные о кино с kinopoisk и копирует по F10
 // @author       Roman Balaev
 // @match        https://kinopoisk.ru/*
@@ -111,18 +111,31 @@
         }
     }
 
-    // Получение списка режиссеров (ОБНОВЛЕНО ДЛЯ GM_xmlHttpRequest)
+    // Получение списка режиссеров (ВЕРСИЯ С ДИАГНОСТИКОЙ)
     function getDirectors(url) {
         return new Promise((resolve) => {
+            alert('Начинаем получать режиссеров по URL: ' + url);
+            
             GM_xmlHttpRequest({
                 method: 'GET',
                 url: url,
                 onload: function(response) {
                     try {
+                        alert('Ответ от сервера получен. Статус: ' + response.status);
+                        
                         const parser = new DOMParser();
                         const doc = parser.parseFromString(response.responseText, 'text/html');
+                        
+                        // Проверяем что распарсилось
+                        if (!doc.querySelector('body')) {
+                            alert('Ошибка: не удалось распарсить HTML');
+                            resolve([]);
+                            return;
+                        }
+                        
                         const directors = [];
                         const actorElements = doc.querySelectorAll('.actorInfo');
+                        alert('Найдено элементов .actorInfo: ' + actorElements.length);
 
                         for (const element of actorElements) {
                             if (directors.length >= CONFIG.MAX_DIRECTORS) break;
@@ -132,13 +145,17 @@
                                 if (directorName) directors.push(directorName);
                             }
                         }
+                        
+                        alert('Режиссеры собраны: ' + directors.join(', '));
                         resolve(directors);
                     } catch (error) {
+                        alert('Ошибка в onload режиссеров: ' + error.message);
                         console.error('Ошибка получения режиссеров:', error);
                         resolve([]);
                     }
                 },
-                onerror: function() {
+                onerror: function(error) {
+                    alert('Ошибка запроса режиссеров: ' + error);
                     console.error('Ошибка запроса режиссеров');
                     resolve([]);
                 }
@@ -146,16 +163,28 @@
         });
     }
 
-    // Получение списка студий (ОБНОВЛЕНО ДЛЯ GM_xmlHttpRequest)
+    // Получение списка студий (ВЕРСИЯ С ДИАГНОСТИКОЙ)
     function getStudios(url) {
         return new Promise((resolve) => {
+            alert('Начинаем получать студии по URL: ' + url);
+            
             GM_xmlHttpRequest({
                 method: 'GET',
                 url: url,
                 onload: function(response) {
                     try {
+                        alert('Ответ от сервера получен. Статус: ' + response.status);
+                        
                         const parser = new DOMParser();
                         const doc = parser.parseFromString(response.responseText, 'text/html');
+                        
+                        // Проверяем что распарсилось
+                        if (!doc.querySelector('body')) {
+                            alert('Ошибка: не удалось распарсить HTML');
+                            resolve([]);
+                            return;
+                        }
+                        
                         const studios = [];
                         const productionElements = doc.querySelectorAll('*');
                         let targetTable = null;
@@ -167,21 +196,29 @@
                             }
                         }
 
+                        alert('Найдена таблица производства: ' + (targetTable ? 'да' : 'нет'));
+
                         if (targetTable) {
                             const links = targetTable.querySelectorAll('a');
+                            alert('Найдено ссылок в таблице: ' + links.length);
+                            
                             for (const link of links) {
                                 if (studios.length >= CONFIG.MAX_STUDIOS) break;
                                 const studioName = cleanText(link.textContent);
                                 if (studioName) studios.push(studioName);
                             }
                         }
+                        
+                        alert('Студии собраны: ' + studios.join(', '));
                         resolve(studios);
                     } catch (error) {
+                        alert('Ошибка в onload студий: ' + error.message);
                         console.error('Ошибка получения студий:', error);
                         resolve([]);
                     }
                 },
-                onerror: function() {
+                onerror: function(error) {
+                    alert('Ошибка запроса студий: ' + error);
                     console.error('Ошибка запроса студий');
                     resolve([]);
                 }
