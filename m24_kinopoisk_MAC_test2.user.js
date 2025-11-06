@@ -1,7 +1,7 @@
 // ==UserScript==
-// @name         Kinopoisk Data Collector
+// @name         Test2
 // @namespace    http://tampermonkey.net/
-// @version      1.1
+// @version      1.2
 // @description  Собирает данные о кино с kinopoisk и копирует по Control+Command+F10
 // @author       Roman Balaev
 // @match        https://kinopoisk.ru/*
