@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Kinopoisk Data Collector
 // @namespace    http://tampermonkey.net/
-// @version      2.2MAC
+// @version      2.3MAC
 // @description  Собирает данные о кино с kinopoisk и копирует по Control+Command+F10
 // @author       Roman Balaev
 // @match        https://kinopoisk.ru/*
@@ -25,6 +25,50 @@
 
     // Основная функция скрипта
     async function collectKinopoiskData() {
+
+// ДОБАВЬТЕ ЭТОТ КОД ДЛЯ ДИАГНОСТИКИ
+    let debugInfo = "Данные отладки:\n\n";
+    
+    try {
+        // Проверяем GM функции
+        debugInfo += "GM.setClipboard: " + (typeof GM.setClipboard) + "\n";
+        debugInfo += "GM.xmlHttpRequest: " + (typeof GM.xmlHttpRequest) + "\n";
+        debugInfo += "URL: " + window.location.href + "\n\n";
+        
+        const currentUrl = window.location.href;
+        const urlMatch = currentUrl.match(/kinopoisk\.ru\/(film|series)\/(\d+)/);
+        debugInfo += "URL match: " + (urlMatch ? "успех" : "не найдено") + "\n";
+        
+        if (urlMatch) {
+            debugInfo += "Тип: " + urlMatch[1] + ", ID: " + urlMatch[2] + "\n\n";
+        }
+
+        // Получаем основные данные
+        const mainData = await getMainData();
+        debugInfo += "Основные данные: " + (mainData ? "получены" : "не получены") + "\n";
+        if (mainData) {
+            debugInfo += "- Название: " + mainData.name + "\n";
+            debugInfo += "- Тип: " + mainData.contentType + "\n";
+        }
+
+        // ПОКАЗЫВАЕМ ОКНО С ДАННЫМИ ДИАГНОСТИКИ
+        const userConfirmed = confirm(debugInfo + "\nПродолжить выполнение скрипта?");
+        if (!userConfirmed) return;
+        
+        // Остальной код скрипта...
+        showNotification('Скрипт запущен', 'loading', 500);
+        
+        if (!mainData) {
+            showNotification('Не удалось получить основные данные', 'error');
+            return;
+        }
+
+        const filmType = urlMatch[1];
+        const filmId = urlMatch[2];
+        const baseUrl = currentUrl.split('/').slice(0, 3).join('/');
+
+        // Продолжение выполнения...
+
         // ПОКАЗЫВАЕМ УВЕДОМЛЕНИЕ О ЗАПУСКЕ СКРИПТА
         showNotification('Скрипт запущен', 'loading', 500);
         
