@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Test2
 // @namespace    http://tampermonkey.net/
-// @version      1.2
-// @description  Собирает данные о кино с kinopoisk и копирует по Control+Command+F10
+// @version      1.4
+// @description  Собирает данные о кино с kinopoisk и копирует по F10
 // @author       Roman Balaev
 // @match        https://kinopoisk.ru/*
 // @match        https://www.kinopoisk.ru/*
@@ -51,9 +51,6 @@
 
     // Основная функция скрипта
     async function collectKinopoiskData() {
-        // СРАЗУ ПРОВЕРЯЕМ РАБОТОСПОСОБНОСТЬ
-        alert('Скрипт запускается! Проверяем GM функции...');
-        
         let debugInfo = "Данные отладки:\n\n";
         
         try {
@@ -192,7 +189,7 @@
         });
     }
 
-    // Остальные функции без изменений...
+    // Получение основных данных с текущей страницы
     async function getMainData() {
         const scriptElement = document.querySelector('script[type="application/ld+json"]');
         if (!scriptElement) return null;
@@ -213,6 +210,7 @@
         }
     }
 
+    // Форматирование финального результата
     function formatResult(mainData, directors, studios) {
         const { name, contentType } = mainData;
         let directorsPart = 'режиссер – ';
@@ -223,41 +221,71 @@
         return finalCleanup(result);
     }
 
+    // Очистка текста от лишних пробелов
     function cleanText(text) {
         if (!text) return '';
         return text.replace(/^\s+|\s+$/g, '');
     }
 
+    // Финальная очистка текста (замена кавычек и буквы ё)
     function finalCleanup(text) {
         return text.replace(/[«»]/g, '"').replace(/ё/g, 'е');
     }
 
+    // Показ уведомления
     function showNotification(message, type = 'info') {
         const style = document.createElement('style');
-        style.textContent = `.kinopoisk-notification {position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); padding: 15px 25px; border-radius: 8px; font-family: Arial; font-size: 16px; font-weight: bold; color: white; z-index: 10000; box-shadow: 0 4px 12px rgba(0,0,0,0.3); text-align: center; max-width: 80%; } .kinopoisk-notification.success { background-color: ${CONFIG.NOTIFICATION_COLOR}; border: 2px solid #1B5E20; } .kinopoisk-notification.error { background-color: #c62828; border: 2px solid #b71c1c; }`;
+        style.textContent = `
+            .kinopoisk-notification {
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                padding: 15px 25px;
+                border-radius: 8px;
+                font-family: Arial, sans-serif;
+                font-size: 16px;
+                font-weight: bold;
+                color: white;
+                z-index: 10000;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+                text-align: center;
+                max-width: 80%;
+                word-wrap: break-word;
+            }
+            .kinopoisk-notification.success {
+                background-color: ${CONFIG.NOTIFICATION_COLOR};
+                border: 2px solid #1B5E20;
+            }
+            .kinopoisk-notification.error {
+                background-color: #c62828;
+                border: 2px solid #b71c1c;
+            }
+        `;
         document.head.appendChild(style);
         const notification = document.createElement('div');
         notification.className = `kinopoisk-notification ${type}`;
         notification.textContent = message;
         document.body.appendChild(notification);
-        setTimeout(() => { if (notification.parentNode) notification.parentNode.removeChild(notification); }, CONFIG.NOTIFICATION_TIMEOUT);
+        setTimeout(() => { 
+            if (notification.parentNode) notification.parentNode.removeChild(notification); 
+        }, CONFIG.NOTIFICATION_TIMEOUT);
     }
 
+    // Обработчик нажатия клавиши F10 (БЕЗ МОДИФИКАТОРОВ)
     function handleKeyPress(event) {
-        if (event.key === 'F10' && event.ctrlKey && event.metaKey) {
+        if (event.key === 'F10') {
             event.preventDefault();
             collectKinopoiskData();
         }
     }
 
+    // Инициализация скрипта
     function init() {
         document.addEventListener('keydown', handleKeyPress);
-        // ТЕСТОВОЕ УВЕДОМЛЕНИЕ
-        setTimeout(() => {
-            alert('Скрипт Kinopoisk загружен! Нажмите Ctrl+Cmd+F10');
-        }, 1000);
     }
 
+    // Запускаем скрипт когда DOM готов
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', init);
     } else {
