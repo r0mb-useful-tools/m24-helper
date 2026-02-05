@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         123RF to Google Sheets
 // @namespace    http://tampermonkey.net/
-// @version      3.1
+// @version      3.2
 // @description  Копирует инфо с 123RF для Google-таблиц по нажатию F10
 // @author       Roman Balaev
 // @match        *://*.123rf.com/*
@@ -119,7 +119,7 @@ if (typeof GM_setValue === 'undefined') {
 
             const title = mediaData.title;
             const mediaId = mediaData.media_id;
-            const contributorUid = mediaData.contributor_uid;
+            const contributorUid = mediaData.contributor;
 
             if (!title || !mediaId || !contributorUid) {
                 throw new Error('Не все необходимые данные найдены');
