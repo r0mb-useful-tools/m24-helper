@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Копирование изображения в фотобанке
 // @namespace    http://tampermonkey.net/
-// @version      1.9
+// @version      2.0
 // @description  Фото из банка в буфер обмена
 // @author       Roman Balaev
 // @match        *://assist.m24.ru/*
@@ -49,36 +49,6 @@
         }, 2000);
     }
 
-    // Функция для конвертации изображения в PNG
-    async function convertImageToPng(imageUrl) {
-        return new Promise((resolve, reject) => {
-            const img = new Image();
-            img.crossOrigin = 'anonymous';
-            img.src = imageUrl;
-
-            img.onload = () => {
-                const canvas = document.createElement('canvas');
-                canvas.width = img.width;
-                canvas.height = img.height;
-
-                const ctx = canvas.getContext('2d');
-                ctx.drawImage(img, 0, 0);
-
-                canvas.toBlob((blob) => {
-                    if (blob) {
-                        resolve(blob);
-                    } else {
-                        reject(new Error('Не удалось конвертировать изображение в PNG'));
-                    }
-                }, 'image/png');
-            };
-
-            img.onerror = () => {
-                reject(new Error('Не удалось загрузить изображение'));
-            };
-        });
-    }
-
     // Функция для копирования изображения в буфер обмена
     async function copyImageToClipboard(imageUrl) {
         try {
@@ -93,25 +63,15 @@
                 });
             });
 
+            // Получаем оригинальный Blob из ответа
             const blob = response.response;
 
-            if (blob.type !== 'image/png') {
-                const imageUrlTemp = URL.createObjectURL(blob);
-                const pngBlob = await convertImageToPng(imageUrlTemp);
-                URL.revokeObjectURL(imageUrlTemp);
-
-                await navigator.clipboard.write([
-                    new ClipboardItem({
-                        'image/png': pngBlob
-                    })
-                ]);
-            } else {
-                await navigator.clipboard.write([
-                    new ClipboardItem({
-                        'image/png': blob
-                    })
-                ]);
-            }
+            // Копируем изображение в буфер обмена как есть (без конвертации в PNG)
+            await navigator.clipboard.write([
+                new ClipboardItem({
+                    [blob.type]: blob
+                })
+            ]);
 
             console.log('Изображение скопировано в буфер обмена:', imageUrl);
             showNotification('Изображение скопировано в буфер обмена!');
