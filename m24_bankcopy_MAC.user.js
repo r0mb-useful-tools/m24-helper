@@ -1,11 +1,10 @@
 // ==UserScript==
-// @name         Скачивание изображения в фотобанке
+// @name         Копирование изображения в фотобанке
 // @namespace    http://tampermonkey.net/
-// @version      2.2
-// @description  Скачивание фото из банка
+// @version      3.0
+// @description  Фото из банка в буфер обмена
 // @author       Roman Balaev
 // @match        *://assist.m24.ru/*
-// @grant        GM.xmlhttpRequest
 // @grant        GM.addStyle
 // @updateURL    https://github.com/r0mb-useful-tools/m24-helper/raw/refs/heads/main/m24_bankcopy_MAC.user.js
 // @downloadURL  https://github.com/r0mb-useful-tools/m24-helper/raw/refs/heads/main/m24_bankcopy_MAC.user.js
@@ -30,8 +29,6 @@
             animation: fadeOut 0.5s ease-in-out 1.5s forwards;
             box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
             border-left: 40px solid transparent !important;
-            white-space: pre-line;
-            text-align: center;
         }
         @keyframes fadeOut {
             from { opacity: 1; }
@@ -48,52 +45,30 @@
 
         setTimeout(() => {
             notification.remove();
-        }, 3000);
+        }, 2000);
     }
 
-    // Функция для получения имени файла из URL
-    function getFilenameFromUrl(url) {
-        return url.split('/').pop().split('?')[0];
-    }
-
-    // Функция для скачивания изображения
-    async function downloadImage(imageUrl) {
-        const filename = getFilenameFromUrl(imageUrl);
-        
+    // Функция для копирования изображения в буфер обмена
+    async function copyImageToClipboard(imageUrl) {
         try {
-            // Используем GM.xmlhttpRequest с заголовком для Safari
-            const response = await new Promise((resolve, reject) => {
-                GM.xmlhttpRequest({
-                    method: 'GET',
-                    url: imageUrl,
-                    responseType: 'blob',
-                    headers: {
-                        'Accept': 'application/octet-stream'
-                    },
-                    onload: (response) => resolve(response),
-                    onerror: (error) => reject(error)
-                });
-            });
-
-            const blob = response.response;
+            // Для Safari: передаём Promise внутрь ClipboardItem
+            // Это сохраняет контекст пользовательского действия
+            const imagePromise = fetch(imageUrl).then(response => response.blob());
             
-            // Создаём ссылку для скачивания
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = filename;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
+            // Определяем тип изображения (по умолчанию PNG)
+            const mimeType = imageUrl.match(/\.(jpg|jpeg)$/i) ? 'image/jpeg' : 'image/png';
             
-            setTimeout(() => {
-                URL.revokeObjectURL(url);
-            }, 100);
+            await navigator.clipboard.write([
+                new ClipboardItem({
+                    [mimeType]: imagePromise
+                })
+            ]);
 
-            showNotification('Изображение скачано!\n' + filename);
+            console.log('Изображение скопировано в буфер обмена:', imageUrl);
+            showNotification('Изображение скопировано в буфер обмена!');
         } catch (error) {
-            console.error('Ошибка при скачивании изображения:', error);
-            showNotification('Не удалось скачать изображение\n' + filename);
+            console.error('Ошибка при копировании изображения:', error);
+            showNotification('Не удалось скопировать изображение');
         }
     }
 
@@ -104,7 +79,7 @@
         if (linkElement && (linkElement.href.includes('.jpg') || linkElement.href.includes('.jpeg') || linkElement.href.includes('.png') || linkElement.href.includes('.gif'))) {
             event.preventDefault();
             const imageUrl = linkElement.href;
-            downloadImage(imageUrl);
+            copyImageToClipboard(imageUrl);
         }
     }
 
