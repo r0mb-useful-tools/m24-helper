@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         Копирование изображения в фотобанке
+// @name         Скачивание изображения в фотобанке
 // @namespace    http://tampermonkey.net/
-// @version      2.1
-// @description  Фото из банка в буфер обмена
+// @version      2.2
+// @description  Скачивание фото из банка
 // @author       Roman Balaev
 // @match        *://assist.m24.ru/*
 // @grant        GM.xmlhttpRequest
@@ -30,6 +30,8 @@
             animation: fadeOut 0.5s ease-in-out 1.5s forwards;
             box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
             border-left: 40px solid transparent !important;
+            white-space: pre-line;
+            text-align: center;
         }
         @keyframes fadeOut {
             from { opacity: 1; }
@@ -46,27 +48,34 @@
 
         setTimeout(() => {
             notification.remove();
-        }, 2000);
+        }, 3000);
+    }
+
+    // Функция для получения имени файла из URL
+    function getFilenameFromUrl(url) {
+        return url.split('/').pop().split('?')[0];
     }
 
     // Функция для скачивания изображения
     async function downloadImage(imageUrl) {
+        const filename = getFilenameFromUrl(imageUrl);
+        
         try {
-            // Загружаем изображение через GM.xmlhttpRequest
+            // Используем GM.xmlhttpRequest с заголовком для Safari
             const response = await new Promise((resolve, reject) => {
                 GM.xmlhttpRequest({
                     method: 'GET',
                     url: imageUrl,
                     responseType: 'blob',
+                    headers: {
+                        'Accept': 'application/octet-stream'
+                    },
                     onload: (response) => resolve(response),
                     onerror: (error) => reject(error)
                 });
             });
 
             const blob = response.response;
-            
-            // Получаем имя файла из URL
-            const filename = imageUrl.split('/').pop().split('?')[0];
             
             // Создаём ссылку для скачивания
             const url = URL.createObjectURL(blob);
@@ -77,15 +86,14 @@
             a.click();
             document.body.removeChild(a);
             
-            // Освобождаем память
             setTimeout(() => {
                 URL.revokeObjectURL(url);
             }, 100);
 
-            showNotification('Изображение скачано!');
+            showNotification('Изображение скачано!\n' + filename);
         } catch (error) {
             console.error('Ошибка при скачивании изображения:', error);
-            showNotification('Не удалось скачать изображение');
+            showNotification('Не удалось скачать изображение\n' + filename);
         }
     }
 
