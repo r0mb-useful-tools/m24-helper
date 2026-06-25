@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Копирование изображения в фотобанке
 // @namespace    http://tampermonkey.net/
-// @version      2.0
+// @version      2.1
 // @description  Фото из банка в буфер обмена
 // @author       Roman Balaev
 // @match        *://assist.m24.ru/*
@@ -49,10 +49,10 @@
         }, 2000);
     }
 
-    // Функция для копирования изображения в буфер обмена
-    async function copyImageToClipboard(imageUrl) {
+    // Функция для скачивания изображения
+    async function downloadImage(imageUrl) {
         try {
-            // Используем GM.xmlhttpRequest для обхода CORS
+            // Загружаем изображение через GM.xmlhttpRequest
             const response = await new Promise((resolve, reject) => {
                 GM.xmlhttpRequest({
                     method: 'GET',
@@ -63,21 +63,29 @@
                 });
             });
 
-            // Получаем оригинальный Blob из ответа
             const blob = response.response;
+            
+            // Получаем имя файла из URL
+            const filename = imageUrl.split('/').pop().split('?')[0];
+            
+            // Создаём ссылку для скачивания
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            
+            // Освобождаем память
+            setTimeout(() => {
+                URL.revokeObjectURL(url);
+            }, 100);
 
-            // Копируем изображение в буфер обмена как есть (без конвертации в PNG)
-            await navigator.clipboard.write([
-                new ClipboardItem({
-                    [blob.type]: blob
-                })
-            ]);
-
-            console.log('Изображение скопировано в буфер обмена:', imageUrl);
-            showNotification('Изображение скопировано в буфер обмена!');
+            showNotification('Изображение скачано!');
         } catch (error) {
-            console.error('Ошибка при копировании изображения:', error);
-            showNotification('Не удалось скопировать изображение');
+            console.error('Ошибка при скачивании изображения:', error);
+            showNotification('Не удалось скачать изображение');
         }
     }
 
@@ -88,7 +96,7 @@
         if (linkElement && (linkElement.href.includes('.jpg') || linkElement.href.includes('.jpeg') || linkElement.href.includes('.png') || linkElement.href.includes('.gif'))) {
             event.preventDefault();
             const imageUrl = linkElement.href;
-            copyImageToClipboard(imageUrl);
+            downloadImage(imageUrl);
         }
     }
 
