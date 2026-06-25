@@ -1,11 +1,13 @@
 // ==UserScript==
-// @name         Копирование изображения в фотобанке
+// @name         Скачивание изображения в фотобанке
 // @namespace    http://tampermonkey.net/
-// @version      3.0
-// @description  Фото из банка в буфер обмена
+// @version      3.2
+// @description  Скачивание фото из банка
 // @author       Roman Balaev
 // @match        *://assist.m24.ru/*
+// @grant        GM.xmlhttpRequest
 // @grant        GM.addStyle
+// @connect      assist.m24.ru
 // @updateURL    https://github.com/r0mb-useful-tools/m24-helper/raw/refs/heads/main/m24_bankcopy_MAC.user.js
 // @downloadURL  https://github.com/r0mb-useful-tools/m24-helper/raw/refs/heads/main/m24_bankcopy_MAC.user.js
 // ==/UserScript==
@@ -29,6 +31,8 @@
             animation: fadeOut 0.5s ease-in-out 1.5s forwards;
             box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
             border-left: 40px solid transparent !important;
+            white-space: pre-line;
+            text-align: center;
         }
         @keyframes fadeOut {
             from { opacity: 1; }
@@ -45,30 +49,52 @@
 
         setTimeout(() => {
             notification.remove();
-        }, 2000);
+        }, 3000);
     }
 
-    // Функция для копирования изображения в буфер обмена
-    async function copyImageToClipboard(imageUrl) {
-        try {
-            // Для Safari: передаём Promise внутрь ClipboardItem
-            // Это сохраняет контекст пользовательского действия
-            const imagePromise = fetch(imageUrl).then(response => response.blob());
-            
-            // Определяем тип изображения (по умолчанию PNG)
-            const mimeType = imageUrl.match(/\.(jpg|jpeg)$/i) ? 'image/jpeg' : 'image/png';
-            
-            await navigator.clipboard.write([
-                new ClipboardItem({
-                    [mimeType]: imagePromise
-                })
-            ]);
+    // Функция для получения имени файла из URL
+    function getFilenameFromUrl(url) {
+        return url.split('/').pop().split('?')[0];
+    }
 
-            console.log('Изображение скопировано в буфер обмена:', imageUrl);
-            showNotification('Изображение скопировано в буфер обмена!');
+    // Функция для скачивания изображения
+    async function downloadImage(imageUrl) {
+        const filename = getFilenameFromUrl(imageUrl);
+        
+        try {
+            // Используем GM.xmlhttpRequest с заголовком для Safari
+            const response = await new Promise((resolve, reject) => {
+                GM.xmlhttpRequest({
+                    method: 'GET',
+                    url: imageUrl,
+                    responseType: 'blob',
+                    headers: {
+                        'Accept': 'application/octet-stream'
+                    },
+                    onload: (response) => resolve(response),
+                    onerror: (error) => reject(error)
+                });
+            });
+
+            const blob = response.response;
+            
+            // Создаём ссылку для скачивания
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            
+            setTimeout(() => {
+                URL.revokeObjectURL(url);
+            }, 100);
+
+            showNotification('Изображение скачано!\n' + filename);
         } catch (error) {
-            console.error('Ошибка при копировании изображения:', error);
-            showNotification('Не удалось скопировать изображение');
+            console.error('Ошибка при скачивании изображения:', error);
+            showNotification('Не удалось скачать изображение\n' + filename);
         }
     }
 
@@ -79,7 +105,7 @@
         if (linkElement && (linkElement.href.includes('.jpg') || linkElement.href.includes('.jpeg') || linkElement.href.includes('.png') || linkElement.href.includes('.gif'))) {
             event.preventDefault();
             const imageUrl = linkElement.href;
-            copyImageToClipboard(imageUrl);
+            downloadImage(imageUrl);
         }
     }
 
