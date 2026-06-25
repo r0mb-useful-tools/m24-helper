@@ -1,13 +1,11 @@
 // ==UserScript==
-// @name         Скачивание изображения в фотобанке
+// @name         Копирование изображения из фотобанка
 // @namespace    http://tampermonkey.net/
-// @version      3.2
-// @description  Скачивание фото из банка
+// @version      4.0
+// @description  Фото из банка в буфер обмена (Safari fix)
 // @author       Roman Balaev
 // @match        *://assist.m24.ru/*
-// @grant        GM.xmlhttpRequest
 // @grant        GM.addStyle
-// @connect      assist.m24.ru
 // @updateURL    https://github.com/r0mb-useful-tools/m24-helper/raw/refs/heads/main/m24_bankcopy_MAC.user.js
 // @downloadURL  https://github.com/r0mb-useful-tools/m24-helper/raw/refs/heads/main/m24_bankcopy_MAC.user.js
 // ==/UserScript==
@@ -31,8 +29,6 @@
             animation: fadeOut 0.5s ease-in-out 1.5s forwards;
             box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
             border-left: 40px solid transparent !important;
-            white-space: pre-line;
-            text-align: center;
         }
         @keyframes fadeOut {
             from { opacity: 1; }
@@ -49,52 +45,74 @@
 
         setTimeout(() => {
             notification.remove();
-        }, 3000);
+        }, 2000);
     }
 
-    // Функция для получения имени файла из URL
-    function getFilenameFromUrl(url) {
-        return url.split('/').pop().split('?')[0];
+    // Функция для конвертации изображения в PNG через canvas
+    function convertToPngBlob(imageUrl) {
+        return new Promise((resolve, reject) => {
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+            img.src = imageUrl;
+
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                canvas.width = img.width;
+                canvas.height = img.height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0);
+                
+                canvas.toBlob((blob) => {
+                    if (blob) {
+                        resolve(blob);
+                    } else {
+                        reject(new Error('Не удалось конвертировать в PNG'));
+                    }
+                }, 'image/png');
+            };
+
+            img.onerror = () => {
+                reject(new Error('Не удалось загрузить изображение'));
+            };
+        });
     }
 
-    // Функция для скачивания изображения
-    async function downloadImage(imageUrl) {
-        const filename = getFilenameFromUrl(imageUrl);
-        
+    // Функция для копирования изображения в буфер обмена
+    async function copyImageToClipboard(imageUrl) {
         try {
-            // Используем GM.xmlhttpRequest с заголовком для Safari
-            const response = await new Promise((resolve, reject) => {
-                GM.xmlhttpRequest({
-                    method: 'GET',
-                    url: imageUrl,
-                    responseType: 'blob',
-                    headers: {
-                        'Accept': 'application/octet-stream'
-                    },
-                    onload: (response) => resolve(response),
-                    onerror: (error) => reject(error)
-                });
+            // Создаём Promise, который сконвертирует изображение в PNG
+            // и вернёт ClipboardItem
+            const clipboardPromise = new Promise(async (resolve, reject) => {
+                try {
+                    // Загружаем изображение через fetch (без ожидания снаружи)
+                    const response = await fetch(imageUrl);
+                    const blob = await response.blob();
+                    
+                    // Создаём URL для загрузки в img
+                    const objectUrl = URL.createObjectURL(blob);
+                    
+                    // Конвертируем в PNG через canvas
+                    const pngBlob = await convertToPngBlob(objectUrl);
+                    URL.revokeObjectURL(objectUrl);
+                    
+                    // Создаём ClipboardItem с PNG
+                    resolve(new ClipboardItem({
+                        'image/png': pngBlob
+                    }));
+                } catch (error) {
+                    reject(error);
+                }
             });
 
-            const blob = response.response;
-            
-            // Создаём ссылку для скачивания
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = filename;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            
-            setTimeout(() => {
-                URL.revokeObjectURL(url);
-            }, 100);
+            // Вызываем write() синхронно, передавая Promise
+            // Safari сам дождётся его внутри
+            await navigator.clipboard.write([await clipboardPromise]);
 
-            showNotification('Изображение скачано!\n' + filename);
+            console.log('Изображение скопировано в буфер обмена:', imageUrl);
+            showNotification('Изображение скопировано в буфер обмена!');
         } catch (error) {
-            console.error('Ошибка при скачивании изображения:', error);
-            showNotification('Не удалось скачать изображение\n' + filename);
+            console.error('Ошибка при копировании изображения:', error);
+            showNotification('Не удалось скопировать изображение');
         }
     }
 
@@ -105,7 +123,7 @@
         if (linkElement && (linkElement.href.includes('.jpg') || linkElement.href.includes('.jpeg') || linkElement.href.includes('.png') || linkElement.href.includes('.gif'))) {
             event.preventDefault();
             const imageUrl = linkElement.href;
-            downloadImage(imageUrl);
+            copyImageToClipboard(imageUrl);
         }
     }
 
