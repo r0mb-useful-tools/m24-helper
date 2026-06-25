@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Копирование изображения в фотобанке
 // @namespace    http://tampermonkey.net/
-// @version      1.7
+// @version      1.8
 // @description  Фото из банка в буфер обмена
 // @author       Roman Balaev
 // @match        *://assist.m24.ru/*
@@ -14,8 +14,51 @@
 (function() {
     'use strict';
 
+    // Универсальная обёртка для GM_xmlhttpRequest
+    function gmRequest(options) {
+        return new Promise((resolve, reject) => {
+            // Пробуем GM.xmlHttpRequest (Safari/Userscripts)
+            if (typeof GM !== 'undefined' && typeof GM.xmlHttpRequest === 'function') {
+                GM.xmlHttpRequest({
+                    method: options.method || 'GET',
+                    url: options.url,
+                    responseType: options.responseType || 'blob',
+                    onload: function(response) {
+                        resolve(response);
+                    },
+                    onerror: function(error) {
+                        reject(error);
+                    }
+                });
+            }
+            // Пробуем GM_xmlhttpRequest (Chrome/Tampermonkey)
+            else if (typeof GM_xmlhttpRequest === 'function') {
+                GM_xmlhttpRequest({
+                    method: options.method || 'GET',
+                    url: options.url,
+                    responseType: options.responseType || 'blob',
+                    onload: function(response) {
+                        resolve(response);
+                    },
+                    onerror: function(error) {
+                        reject(error);
+                    }
+                });
+            }
+            // Fallback на fetch
+            else {
+                fetch(options.url)
+                    .then(response => response.blob())
+                    .then(blob => {
+                        resolve({ response: blob });
+                    })
+                    .catch(error => reject(error));
+            }
+        });
+    }
+
     // Добавляем стили для уведомления
-    GM.addStyle(`
+    GM_addStyle(`
         .custom-notification {
             position: fixed;
             top: 50%;
@@ -28,7 +71,7 @@
             font-size: 18px;
             z-index: 10000;
             animation: fadeOut 0.5s ease-in-out 1.5s forwards;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3); /* Добавим тень для эффекта "окошка" */
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
             border-left: 40px solid transparent !important;
         }
         @keyframes fadeOut {
@@ -44,7 +87,6 @@
         notification.textContent = message;
         document.body.appendChild(notification);
 
-        // Удаляем уведомление через 2 секунды
         setTimeout(() => {
             notification.remove();
         }, 2000);
@@ -54,7 +96,7 @@
     async function convertImageToPng(imageUrl) {
         return new Promise((resolve, reject) => {
             const img = new Image();
-            img.crossOrigin = 'anonymous'; // Разрешаем загрузку изображений с других доменов
+            img.crossOrigin = 'anonymous';
             img.src = imageUrl;
 
             img.onload = () => {
@@ -65,7 +107,6 @@
                 const ctx = canvas.getContext('2d');
                 ctx.drawImage(img, 0, 0);
 
-                // Конвертируем изображение в PNG
                 canvas.toBlob((blob) => {
                     if (blob) {
                         resolve(blob);
@@ -84,34 +125,27 @@
     // Функция для копирования изображения в буфер обмена
     async function copyImageToClipboard(imageUrl) {
         try {
-            // Используем GM.xmlhttpRequest для обхода CORS
-            const response = await new Promise((resolve, reject) => {
-                GM.xmlhttpRequest({
-                    method: 'GET',
-                    url: imageUrl,
-                    responseType: 'blob',
-                    onload: (response) => resolve(response),
-                    onerror: (error) => reject(error)
-                });
+            // Используем универсальную обёртку
+            const response = await gmRequest({
+                method: 'GET',
+                url: imageUrl,
+                responseType: 'blob'
             });
 
-            // Получаем Blob из ответа
             const blob = response.response;
 
-            // Конвертируем изображение в PNG, если это не PNG
+            // Если это не PNG - конвертируем
             if (blob.type !== 'image/png') {
-                const imageUrl = URL.createObjectURL(blob);
-                const pngBlob = await convertImageToPng(imageUrl);
-                URL.revokeObjectURL(imageUrl); // Освобождаем память
+                const imageUrlTemp = URL.createObjectURL(blob);
+                const pngBlob = await convertImageToPng(imageUrlTemp);
+                URL.revokeObjectURL(imageUrlTemp);
 
-                // Копируем изображение в буфер обмена
                 await navigator.clipboard.write([
                     new ClipboardItem({
                         'image/png': pngBlob
                     })
                 ]);
             } else {
-                // Копируем изображение в буфер обмена
                 await navigator.clipboard.write([
                     new ClipboardItem({
                         'image/png': blob
@@ -131,11 +165,8 @@
     function handleLinkClick(event) {
         const linkElement = event.target.closest('a');
 
-        // Проверяем, что клик был по ссылке на изображение
         if (linkElement && (linkElement.href.includes('.jpg') || linkElement.href.includes('.jpeg') || linkElement.href.includes('.png') || linkElement.href.includes('.gif'))) {
-            event.preventDefault(); // Отменяем стандартное поведение ссылки
-
-            // Копируем изображение в буфер обмена
+            event.preventDefault();
             const imageUrl = linkElement.href;
             copyImageToClipboard(imageUrl);
         }
