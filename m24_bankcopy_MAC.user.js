@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Копирование изображения в фотобанке
 // @namespace    http://tampermonkey.net/
-// @version      1.8
+// @version      1.9
 // @description  Фото из банка в буфер обмена
 // @author       Roman Balaev
 // @match        *://assist.m24.ru/*
@@ -14,51 +14,8 @@
 (function() {
     'use strict';
 
-    // Универсальная обёртка для GM_xmlhttpRequest
-    function gmRequest(options) {
-        return new Promise((resolve, reject) => {
-            // Пробуем GM.xmlHttpRequest (Safari/Userscripts)
-            if (typeof GM !== 'undefined' && typeof GM.xmlHttpRequest === 'function') {
-                GM.xmlHttpRequest({
-                    method: options.method || 'GET',
-                    url: options.url,
-                    responseType: options.responseType || 'blob',
-                    onload: function(response) {
-                        resolve(response);
-                    },
-                    onerror: function(error) {
-                        reject(error);
-                    }
-                });
-            }
-            // Пробуем GM_xmlhttpRequest (Chrome/Tampermonkey)
-            else if (typeof GM_xmlhttpRequest === 'function') {
-                GM_xmlhttpRequest({
-                    method: options.method || 'GET',
-                    url: options.url,
-                    responseType: options.responseType || 'blob',
-                    onload: function(response) {
-                        resolve(response);
-                    },
-                    onerror: function(error) {
-                        reject(error);
-                    }
-                });
-            }
-            // Fallback на fetch
-            else {
-                fetch(options.url)
-                    .then(response => response.blob())
-                    .then(blob => {
-                        resolve({ response: blob });
-                    })
-                    .catch(error => reject(error));
-            }
-        });
-    }
-
     // Добавляем стили для уведомления
-    GM_addStyle(`
+    GM.addStyle(`
         .custom-notification {
             position: fixed;
             top: 50%;
@@ -125,16 +82,19 @@
     // Функция для копирования изображения в буфер обмена
     async function copyImageToClipboard(imageUrl) {
         try {
-            // Используем универсальную обёртку
-            const response = await gmRequest({
-                method: 'GET',
-                url: imageUrl,
-                responseType: 'blob'
+            // Используем GM.xmlhttpRequest для обхода CORS
+            const response = await new Promise((resolve, reject) => {
+                GM.xmlhttpRequest({
+                    method: 'GET',
+                    url: imageUrl,
+                    responseType: 'blob',
+                    onload: (response) => resolve(response),
+                    onerror: (error) => reject(error)
+                });
             });
 
             const blob = response.response;
 
-            // Если это не PNG - конвертируем
             if (blob.type !== 'image/png') {
                 const imageUrlTemp = URL.createObjectURL(blob);
                 const pngBlob = await convertImageToPng(imageUrlTemp);
@@ -172,6 +132,5 @@
         }
     }
 
-    // Добавляем обработчик для всех ссылок на странице
     document.addEventListener('click', handleLinkClick);
 })();
