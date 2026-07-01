@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         123RF to Google Sheets
 // @namespace    http://tampermonkey.net/
-// @version      3.2
+// @version      3.3
 // @description  Копирует инфо с 123RF для Google-таблиц по нажатию F10
 // @author       Roman Balaev
 // @match        *://*.123rf.com/*
@@ -117,12 +117,10 @@ if (typeof GM_setValue === 'undefined') {
                 throw new Error('Не удалось найти данные медиа');
             }
 
-            const title = mediaData.title;
             const mediaId = mediaData.media_id;
-            const contributorUid = mediaData.contributor;
 
-            if (!title || !mediaId || !contributorUid) {
-                throw new Error('Не все необходимые данные найдены');
+            if (!mediaId) {
+                throw new Error('ID изображения не найден');
             }
 
             // Форматируем текущую дату
@@ -133,8 +131,6 @@ if (typeof GM_setValue === 'undefined') {
             const rowData = [
                 config.email, // Используем email из конфига
                 formattedDate,
-                title,
-                contributorUid,
                 mediaId.toString()
             ];
 
