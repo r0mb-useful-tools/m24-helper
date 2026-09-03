@@ -1,7 +1,7 @@
 // ==UserScript==
-// @name         m24_max_pix
+// @name         Заглушки для МАКСа
 // @namespace    https://web.max.ru/
-// @version      1.9
+// @version      2.0
 // @author       Roman Balaev
 // @description  Отправляет автора из заглушек автоматом (только web.max.ru)
 // @match        https://web.max.ru/*
