@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Заглушки для МАКСа
-// @namespace    https://web.max.ru/
+// @namespace    http://tampermonkey.net/
 // @version      2.0
 // @author       Roman Balaev
 // @description  Отправляет автора из заглушек автоматом (только web.max.ru)
