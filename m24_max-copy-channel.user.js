@@ -1,14 +1,14 @@
 // ==UserScript==
 // @name         Копирование названия канала в МАКСе
 // @namespace    http://tampermonkey.net/
-// @version      1.0
+// @version      1.1
 // @author       Roman Balaev
 // @description  Добавляет иконку копирования > MAX/"Название"
 // @match        https://web.max.ru/*
 // @run-at       document-idle
 // @grant        none
-// @updateURL    https://github.com/r0mb-useful-tools/m24-helper/raw/refs/heads/main/m24_max-copy-channel.user.js
-// @downloadURL  https://github.com/r0mb-useful-tools/m24-helper/raw/refs/heads/main/m24_max-copy-channel.user.js
+// @updateURL    https://raw.githubusercontent.com/r0mb-useful-tools/m24-helper/main/m24_max-copy-channel.user.js
+// @downloadURL  https://raw.githubusercontent.com/r0mb-useful-tools/m24-helper/main/m24_max-copy-channel.user.js
 // @noframes
 // ==/UserScript==
 
@@ -18,7 +18,7 @@
   /* ============================== НАСТРОЙКИ ============================== */
   const CONFIG = {
     // сколько держится галочка после копирования, мс
-    iconSwapMs: 600,
+    iconSwapMs: 400,
 
     // размер иконки относительно шрифта названия (1 = как шрифт названия, 1.25 = крупнее)
     iconScale: 1.25,
@@ -225,6 +225,9 @@
     if (!n.nameEl || n.nameEl.querySelector('.' + BTN_CLASS)) return;
 
     const btn = makeButton();
+    
+    // резервируем место сразу, чтобы название не прыгало при проявлении иконки
+    btn.style.opacity = '0';
 
     // чтобы клик по иконке не уходил в обработчики заголовка (профиль не перерисовывался)
     btn.addEventListener('pointerdown', function (e) { e.stopPropagation(); }, true);
@@ -253,6 +256,12 @@
     } else {
       n.nameEl.appendChild(btn);
     }
+    
+    // проявляем иконку через кадр, когда место уже зарезервировано
+    requestAnimationFrame(function () {
+      btn.style.opacity = '';
+    });
+    
     log('иконка добавлена', readName(h2));
   }
 
@@ -278,7 +287,7 @@
     setTimeout(function () {
       scanQueued = false;
       scan();
-    }, 150);
+    }, 50);
   }
 
   scan();
