@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Копирование названия канала в МАКСе
 // @namespace    http://tampermonkey.net/
-// @version      1.1
+// @version      1.2
 // @author       Roman Balaev
 // @description  Добавляет иконку копирования > MAX/"Название"
 // @match        https://web.max.ru/*
@@ -91,6 +91,11 @@
     style.id = STYLE_ID;
     style.textContent = css;
     (document.head || document.documentElement).appendChild(style);
+  }
+
+  // проверка наличия кириллицы (русских букв) в строке
+  function hasCyrillic(str) {
+    return /[а-яА-ЯЁё]/.test(str);
   }
 
   /* ------------------------------ копирование ---------------------------- */
@@ -244,8 +249,10 @@
         log('название пустое, копирование отменено');
         return;
       }
-      // ровно MAX/"Название", без завершающего перевода строки
-      const payload = 'MAX/"' + name + '"';
+      // если есть кириллица — кавычки, если только латиница/цифры — без кавычек
+      const payload = hasCyrillic(name)
+        ? 'MAX/"' + name + '"'
+        : 'MAX/' + name;
       copyToClipboard(payload);
       flash(btn);
       log('скопировано:', JSON.stringify(payload));
